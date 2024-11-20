@@ -1,225 +1,226 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
 #include <ctype.h>
 
-// Function prototypes
-int lexicon(char *archivo);
-int semantic(char *archivo);
-int syntactic(char *archivo);
-
-int lexicon(char *archivo)
+char *eliminarComentarios(const char *codigoOriginal)
 {
-    printf("\n.........................................Realizando análisis léxico.........................................\n");
-    printf("\n");
-    FILE *file = fopen(archivo, "r");
+    static char codigoLimpio[10000];
+    int i = 0, j = 0;
 
-    if (file == NULL)
+    while (codigoOriginal[i] != '\0')
     {
-        printf("No se ha encontrado el archivo\n");
-        return 1;
-    }
 
-    char word[100];
-    while (fscanf(file, "%s", word) != EOF)
-    {
-        // Detectar directivas preprocesador (#include)
-        if (word[0] == '#')
+        if (codigoOriginal[i] == '/' && codigoOriginal[i + 1] == '/')
         {
-            printf("Directiva del preprocesador: %s\n", word);
+            i += 2;
+            while (codigoOriginal[i] != '\n' && codigoOriginal[i] != '\0')
+                i++;
         }
-        // Detectar cabeceras como <stdio.h>
-        else if (word[0] == '<' && word[strlen(word) - 1] == '>')
+
+        else if (codigoOriginal[i] == '/' && codigoOriginal[i + 1] == '*')
         {
-            printf("Cabecera: %s\n", word);
+            i += 2;
+            while (!(codigoOriginal[i] == '*' && codigoOriginal[i + 1] == '/') && codigoOriginal[i] != '\0')
+                i++;
+            if (codigoOriginal[i] != '\0')
+                i += 2;
         }
-        // Palabras reservadas
-        else if (strcmp(word, "int") == 0 || strcmp(word, "float") == 0 || strcmp(word, "char") == 0 ||
-                 strcmp(word, "if") == 0 || strcmp(word, "else") == 0 || strcmp(word, "while") == 0 ||
-                 strcmp(word, "return") == 0 || strcmp(word, "break") == 0 || strcmp(word, "continue") == 0)
-        {
-            printf("Palabra reservada: %s\n", word);
-        }
-        // Literales de cadenas
-        else if (word[0] == '"' && word[strlen(word) - 1] == '"')
-        {
-            printf("Literal de cadena: %s\n", word);
-        }
-        // Números
-        else if (isdigit(word[0]) || (word[0] == '-' && isdigit(word[1])))
-        {
-            printf("Número: %s\n", word);
-        }
-        // Operadores comunes
-        else if (strcmp(word, "+") == 0 || strcmp(word, "-") == 0 || strcmp(word, "*") == 0 || strcmp(word, "/") == 0 ||
-                 strcmp(word, "==") == 0 || strcmp(word, "!=") == 0 || strcmp(word, "<") == 0 || strcmp(word, ">") == 0 ||
-                 strcmp(word, "<=") == 0 || strcmp(word, ">=") == 0 || strcmp(word, "=") == 0)
-        {
-            printf("Operador: %s\n", word);
-        }
-        // Delimitadores y caracteres especiales
-        else if (strcmp(word, ";") == 0 || strcmp(word, "{") == 0 || strcmp(word, "}") == 0 || strcmp(word, ",") == 0)
-        {
-            printf("Delimitador: %s\n", word);
-        }
-        // Parentesis dectectar si hay información dentro de los parentesis
-        else if (word[0] == '(' || word[0] == ')')
-        {
-            printf("Parentesis: %s\n", word);
-        }
-        // Identificadores
-        else if (isalpha(word[0]) || word[0] == '_')
-        {
-            printf("Identificador: %s\n", word);
-        }
-        // Tokens desconocidos
         else
         {
-            printf("\nToken desconocido o error léxico: %s\n", word);
-            printf("\n");
+
+            codigoLimpio[j++] = codigoOriginal[i++];
         }
     }
 
-    fclose(file);
-    return 0;
+    codigoLimpio[j] = '\0';
+    return codigoLimpio;
 }
 
-int syntactic(char *archivo)
+int analizarLexico(const char *codigo)
 {
-    printf(".........................................Realizando análisis sintáctico.........................................\n");
-
-    FILE *file = fopen(archivo, "r");
-    if (file == NULL)
+    for (int i = 0; codigo[i] != '\0'; i++)
     {
-        printf("No se ha encontrado el archivo\n");
-        return 1;
+        if (!isalnum(codigo[i]) && !isspace(codigo[i]) && strchr("+-*/;(){}[]=<>!&|%,.\"\'\\", codigo[i]) == NULL)
+        {
+            return 0;
+        }
     }
-
-    char word[100];
-
-    while (fscanf(file, "%s", word) != EOF)
-    {
-        // Detectar directivas del preprocesador
-        if (word[0] == '#')
-        {
-            if (strcmp(word, "#include") == 0 || strcmp(word, "#define") == 0)
-            {
-                printf("Directiva del preprocesador: %s\n", word);
-                continue;
-            }
-            else
-            {
-                printf("Error sintáctico en: %s\n", word);
-                continue;
-            }
-        }
-
-        // Ejemplo: Validar estructura básica del programa
-        if (strcmp(word, "int") == 0)
-        {
-            fscanf(file, "%s", word); // Leer el siguiente token
-            if (strcmp(word, "main") == 0)
-            {
-                printf("Definición de función principal detectada.\n");
-                fscanf(file, "%s", word); // Leer el siguiente token
-                if (strcmp(word, "()") == 0 || strcmp(word, "(") == 0)
-                {
-                    printf("Inicio de definición de función válida.\n");
-                }
-                else
-                {
-                    printf("Error sintáctico en: %s\n", word);
-                }
-            }
-        }
-
-        // Manejar delimitadores
-        if (strcmp(word, "{") == 0 || strcmp(word, "}") == 0)
-        {
-            printf("Delimitador detectado: %s\n", word);
-            continue;
-        }
-
-        // Validar palabras clave y estructuras
-        if (strcmp(word, "while") == 0 || strcmp(word, "if") == 0 || strcmp(word, "else") == 0)
-        {
-            printf("Palabra reservada detectada: %s\n", word);
-            continue;
-        }
-
-        // Detectar errores en tokens no esperados
-        printf("Error sintáctico en: %s\n", word);
-    }
-
-    fclose(file);
-    return 0;
+    return 1;
 }
 
-// Función de verificación semántica: tipos básicos (ejemplo simple)
-int semantic(char *archivo)
+int analizarSintaxis(const char *codigo)
 {
-    FILE *file = fopen(archivo, "r");
-    if (file == NULL)
+    int balanceParentesis = 0, balanceLlaves = 0;
+
+    for (int i = 0; codigo[i] != '\0'; i++)
     {
-        printf("No se ha encontrado el archivo\n");
-        return 1;
+        if (codigo[i] == '(')
+            balanceParentesis++;
+        else if (codigo[i] == ')')
+            balanceParentesis--;
+        else if (codigo[i] == '{')
+            balanceLlaves++;
+        else if (codigo[i] == '}')
+            balanceLlaves--;
+
+        if (balanceParentesis < 0 || balanceLlaves < 0)
+            return 0;
     }
 
-    char word[100];
-    int tipo_definido = 0;
+    return (balanceParentesis == 0 && balanceLlaves == 0);
+}
 
-    while (
-        fscanf(file, "%s", word) != EOF)
+int analizarSemantica(const char *codigo)
+{
+    int i = 0;
+    int longitud = strlen(codigo);
+
+    while (i < longitud)
     {
-        if (strcmp(word, "int") == 0 || strcmp(word, "float") == 0 || strcmp(word, "char") == 0)
+        if (strstr(codigo + i, "int ") != NULL || strstr(codigo + i, "void ") != NULL || strstr(codigo + i, "char ") != NULL || strstr(codigo + i, "float ") != NULL)
         {
-            tipo_definido = 1;
-        }
-        else if (strcmp(word, "main") == 0)
-        {
-            if (tipo_definido == 0)
+            i += 4;
+
+            while (isspace(codigo[i]))
+                i++;
+
+            if (!isalpha(codigo[i]))
             {
-                printf("Error semántico: Falta definir el tipo de dato\n");
-                return 1;
+                printf("Error semántico: falta un identificador válido después de 'int'.\n");
+                return 0;
             }
+
+            while (isalnum(codigo[i]))
+                i++;
+
+            while (isspace(codigo[i]))
+                i++;
+
+            if (codigo[i] != '(')
+            {
+                printf("Error semántico: falta '(' después del nombre de la función.\n");
+                return 0;
+            }
+            i++;
+
+            while (codigo[i] != ')' && i < longitud)
+                i++;
+
+            if (codigo[i] != ')')
+            {
+                printf("Error semántico: falta ')' para cerrar los parámetros.\n");
+                return 0;
+            }
+            i++;
+
+            while (isspace(codigo[i]))
+                i++;
+
+            if (codigo[i] != '{')
+            {
+                printf("Error semántico: falta '{' para iniciar el bloque de la función.\n");
+                return 0;
+            }
+            i++;
+
+            while (codigo[i] != '}' && i < longitud)
+                i++;
+
+            if (codigo[i] != '}')
+            {
+                printf("Error semántico: falta '}' para cerrar el bloque de la función.\n");
+                return 0;
+            }
+            i++;
+
+            break;
         }
+
+        i++;
     }
 
-    fclose(file);
-    return 0;
+    if (i == longitud)
+    {
+        printf("Error semántico: no se detectó una estructura válida de función 'int main() { ... }'.\n");
+        return 0;
+    }
+
+    return 1;
 }
 
 int main()
 {
+    printf("            Compilador basico en C            ");
     while (1)
     {
+        char archivo[1000];
+        FILE *file;
+        char codigo[10000] = "";
 
-        char archivo[100];
-        printf("Ingrese el nombre del archivo: ");
+        printf("\n...............................................\n");
+        printf("\nIngrese el nombre del archivo: ");
         scanf("%s", archivo);
 
-        if (lexicon(archivo) == 1)
+        file = fopen(archivo, "r");
+        if (!file)
         {
-            continue;
+            printf("No se pudo abrir el archivo.\n");
+            return 1;
         }
 
-        if (syntactic(archivo) == 1)
+        char linea[256];
+        while (fgets(linea, sizeof(linea), file))
         {
+            strcat(codigo, linea);
+        }
+        fclose(file);
+
+        char *codigoSinComentarios = eliminarComentarios(codigo);
+
+        printf("\nCódigo sin comentarios:\n\n%s\n\n", codigoSinComentarios);
+
+        if (!analizarLexico(codigoSinComentarios))
+        {
+            printf("El código contiene errores léxicos.\n");
             continue;
         }
-
-        if (semantic(archivo) == 1)
+        else
         {
-            continue;
+            printf("El código no contiene errores léxicos.\n");
         }
 
-        printf("El archivo no tiene errores\n");
-        break;
+        if (!analizarSintaxis(codigoSinComentarios))
+        {
+            printf("El código contiene errores de sintaxis.\n");
+            continue;
+        }
+        else
+        {
+            printf("El código no contiene errores de sintaxis.\n");
+        }
+
+        if (!analizarSemantica(codigoSinComentarios))
+        {
+            printf("El código contiene errores semánticos.\n");
+            continue;
+        }
+        else
+        {
+            printf("El código no contiene errores semánticos.\n");
+        }
+
+        printf("El código es válido.\n");
+
+        printf("\nDesea analizar otro archivo? (s/n): ");
+        char respuesta;
+        scanf(" %c", &respuesta);
+        if (respuesta != 's')
+            break;
     }
 
-    printf("Presione Enter para salir...");
+    printf("\nPresione Enter para salir...");
     getchar();
     getchar();
-
     return 0;
 }
