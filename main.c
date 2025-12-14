@@ -151,35 +151,41 @@ int analizarSemantica(const char *codigo)
 
 int main()
 {
-    printf("            Compilador basico en C            ");
+    printf("            Compilador básico en C            ");
+    char codigo[10000] = ""; // Acumula el código ingresado por el usuario
+    char linea[1024];        // Almacena temporalmente la línea ingresada
+
     while (1)
     {
-        char archivo[1000];
-        FILE *file;
-        char codigo[10000] = "";
-
         printf("\n...............................................\n");
-        printf("\nIngrese el nombre del archivo: ");
-        scanf("%s", archivo);
+        printf("\nEscriba su código (o escriba 'salir' para terminar):\n\n");
 
-        file = fopen(archivo, "r");
-        if (!file)
+        fgets(linea, sizeof(linea), stdin);
+        linea[strcspn(linea, "\n")] = '\0'; // Elimina el carácter de nueva línea
+
+        if (strcmp(linea, "salir") == 0)
         {
-            printf("No se pudo abrir el archivo.\n");
-            return 1;
+            break;
         }
 
-        char linea[256];
-        while (fgets(linea, sizeof(linea), file))
+        // Concatenar la nueva línea al código acumulado
+        if (strlen(codigo) + strlen(linea) + 1 < sizeof(codigo))
         {
             strcat(codigo, linea);
+            strcat(codigo, "\n"); // Agrega un salto de línea después de cada entrada
         }
-        fclose(file);
+        else
+        {
+            printf("Error: El código acumulado excede el tamaño permitido.\n");
+            break;
+        }
 
+        // Procesar el código acumulado
         char *codigoSinComentarios = eliminarComentarios(codigo);
 
-        printf("\nCódigo sin comentarios:\n\n%s\n\n", codigoSinComentarios);
+        printf("\n");
 
+        // Analizar léxico
         if (!analizarLexico(codigoSinComentarios))
         {
             printf("El código contiene errores léxicos.\n");
@@ -190,6 +196,7 @@ int main()
             printf("El código no contiene errores léxicos.\n");
         }
 
+        // Analizar sintaxis
         if (!analizarSintaxis(codigoSinComentarios))
         {
             printf("El código contiene errores de sintaxis.\n");
@@ -200,6 +207,7 @@ int main()
             printf("El código no contiene errores de sintaxis.\n");
         }
 
+        // Analizar semántica
         if (!analizarSemantica(codigoSinComentarios))
         {
             printf("El código contiene errores semánticos.\n");
@@ -210,17 +218,10 @@ int main()
             printf("El código no contiene errores semánticos.\n");
         }
 
-        printf("El código es válido.\n");
-
-        printf("\nDesea analizar otro archivo? (s/n): ");
-        char respuesta;
-        scanf(" %c", &respuesta);
-        if (respuesta != 's')
-            break;
+        printf("El código ingresado hasta ahora es válido.\n");
     }
 
     printf("\nPresione Enter para salir...");
-    getchar();
     getchar();
     return 0;
 }
